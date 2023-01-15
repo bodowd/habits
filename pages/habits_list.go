@@ -50,11 +50,13 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 }
 
 type ListModel struct {
-	list        list.Model
-	choice      string
-	quitting    bool
-	numRecorded int
-	newEntry    string
+	list         list.Model
+	choice       string
+	quitting     bool
+	numRecorded  int
+	newEntry     string
+	hdb          data.Database
+	errorMessage string
 }
 
 func (m ListModel) Init() tea.Cmd {
@@ -97,6 +99,7 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case userSavedMsg:
 		m.newEntry = msg.text
 		return m, nil
+
 	}
 
 	var cmd tea.Cmd
@@ -149,6 +152,6 @@ func NewList(db *gorm.DB) ListModel {
 	l.Styles.HelpStyle = helpStyle
 	l.SetShowHelp(false)
 
-	m := ListModel{list: l}
+	m := ListModel{list: l, hdb: hdb}
 	return m
 }

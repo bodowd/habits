@@ -1,7 +1,6 @@
 package data
 
 import (
-	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -28,7 +27,7 @@ func NewHabit(name string) *Habit {
 func (d *Database) CreateHabit(name string) (Habit, error) {
 	hab := Habit{Name: name, CreatedAt: time.Now().Format("2006-01-02"), Active: true}
 	if err := d.DB.Create(&hab).Error; err != nil {
-		return hab, fmt.Errorf("Cannot create habit: %v", err)
+		return hab, err
 	}
 	return hab, nil
 }
