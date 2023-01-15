@@ -64,6 +64,7 @@ func (m ListModel) Init() tea.Cmd {
 }
 
 func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.list.SetWidth(msg.Width)
@@ -98,13 +99,17 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case userSavedMsg:
 		m.newEntry = msg.text
+		habits := m.hdb.GetActiveHabits()
+		habitItems := itemsToList(habits)
+		m.list.SetItems(habitItems)
 		return m, nil
 
 	}
 
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
-	return m, cmd
+	cmds = append(cmds, cmd)
+	return m, tea.Batch(cmds...)
 }
 
 func (m ListModel) View() string {
@@ -130,16 +135,21 @@ func (m ListModel) helpView() string {
 	return helpStyle.Render("\n ↑/k: up • /j: down • q/ctrl+c: quit • n: create entry \n")
 }
 
-func NewList(db *gorm.DB) ListModel {
-	hdb := data.Database{DB: db}
-
-	habits := hdb.GetActiveHabits()
-
+func itemsToList(habits []data.Habit) []list.Item {
 	items := make([]list.Item, len(habits))
 
 	for i, h := range habits {
 		items[i] = list.Item(item(h.Name))
 	}
+	return items
+}
+
+func NewList(db *gorm.DB) ListModel {
+	hdb := data.Database{DB: db}
+
+	habits := hdb.GetActiveHabits()
+
+	items := itemsToList(habits)
 
 	const defaultWidth = 200
 
