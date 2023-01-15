@@ -85,6 +85,10 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// And the text field starts with this letter already in there
 			return textInputModel.Update(nil)
 
+			// turn off esc exiting the program
+		case "esc":
+			return m, nil
+
 		}
 
 	case userSavedMsg:
@@ -117,7 +121,7 @@ func (m ListModel) View() string {
 }
 
 func (m ListModel) helpView() string {
-	return helpStyle.Render("\n ↑/k: up • /j: down • esc/q/ctrl+c: quit • n: create entry \n")
+	return helpStyle.Render("\n ↑/k: up • /j: down • q/ctrl+c: quit • n: create entry \n")
 }
 
 func NewList() ListModel {
