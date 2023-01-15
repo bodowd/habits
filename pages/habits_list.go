@@ -12,12 +12,12 @@ import (
 const listHeight = 15
 
 var (
-	titleStyle        = lipgloss.NewStyle().MarginLeft(2)
-	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
-	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1).Foreground(lipgloss.Color("241"))
-	quitTextStyle     = lipgloss.NewStyle().MarginLeft(2).MarginBottom(1)
+	titleStyle            = lipgloss.NewStyle().MarginLeft(2)
+	itemStyle             = lipgloss.NewStyle().PaddingLeft(4)
+	selectedItemStyle     = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
+	paginationStyle       = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
+	helpStyle             = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1).Foreground(lipgloss.Color("241"))
+	notificationTextStyle = lipgloss.NewStyle().MarginLeft(2).MarginBottom(1)
 )
 
 type item string
@@ -104,15 +104,15 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m ListModel) View() string {
 	var s string
 	if m.choice != "" {
-		s = quitTextStyle.Render(fmt.Sprintf("Recorded %s", m.choice))
+		s = notificationTextStyle.Render(fmt.Sprintf("Recorded %s", m.choice))
 	}
 
 	if m.newEntry != "" {
-		s = quitTextStyle.Render(fmt.Sprintf("Added %s as a new goal to track.", m.newEntry))
+		s = notificationTextStyle.Render(fmt.Sprintf("Added %s as a new goal to track.", m.newEntry))
 	}
 
 	if m.quitting {
-		s = quitTextStyle.Render(fmt.Sprintf("You recorded %d completed goals this session. Goodbye", m.numRecorded))
+		s = notificationTextStyle.Render(fmt.Sprintf("You recorded %d completed goals this session. Goodbye", m.numRecorded))
 		return s
 	}
 
