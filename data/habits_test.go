@@ -7,35 +7,45 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func TestCreateHabit(t *testing.T) {
 	db := setup(t)
 	g := Database{DB: db}
 
-	wantName := "eat"
+	t.Run("creates a new habit", func(t *testing.T) {
+		wantName := "eat"
 
-	hab, _ := g.CreateHabit(wantName)
+		hab, _ := g.CreateHabit(wantName)
 
-	var habit Habit
-	db.First(&habit, hab.ID)
+		var habit Habit
+		db.First(&habit, hab.ID)
 
-	gotName := habit.Name
-	gotCreatedAt := habit.CreatedAt
-	gotActive := habit.Active
+		gotName := habit.Name
+		gotCreatedAt := habit.CreatedAt
+		gotActive := habit.Active
 
-	if gotName != wantName {
-		t.Errorf("got %v want %v", gotName, wantName)
-	}
+		if gotName != wantName {
+			t.Errorf("got %v want %v", gotName, wantName)
+		}
 
-	_, err := time.Parse("2006-01-02", gotCreatedAt)
-	if err != nil {
-		t.Errorf("got %v, error: %v", gotCreatedAt, err)
-	}
+		_, err := time.Parse("2006-01-02", gotCreatedAt)
+		if err != nil {
+			t.Errorf("got %v, error: %v", gotCreatedAt, err)
+		}
 
-	if gotActive != true {
-		t.Errorf("got %v want %v", gotActive, true)
-	}
+		if gotActive != true {
+			t.Errorf("got %v want %v", gotActive, true)
+		}
+	})
+
+	t.Run("does not create a duplicate habit", func(t *testing.T) {
+		_, err := g.CreateHabit("eat")
+		if err == nil {
+			t.Errorf("Expected duplicate error")
+		}
+	})
 
 }
 
@@ -67,7 +77,8 @@ func currentDate() string {
 
 func setup(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"),
+		&gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
 		log.Fatalf("unable to open in-memory SQLite DB: %v", err)
 	}

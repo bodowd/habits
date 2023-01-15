@@ -9,7 +9,7 @@ import (
 
 type Habit struct {
 	gorm.Model
-	Name      string
+	Name      string `gorm:"unique;not null"`
 	CreatedAt string
 	Active    bool
 }
