@@ -1,4 +1,4 @@
-package cmd
+package pages
 
 import (
 	"fmt"
@@ -16,8 +16,8 @@ var (
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
 	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
-	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1).Foreground(lipgloss.Color("241"))
+	quitTextStyle     = lipgloss.NewStyle().MarginLeft(2).MarginBottom(1)
 )
 
 type item string
@@ -48,9 +48,11 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 }
 
 type ListModel struct {
-	list     list.Model
-	choice   string
-	quitting bool
+	list        list.Model
+	choice      string
+	quitting    bool
+	numRecorded int
+	newEntry    string
 }
 
 func (m ListModel) Init() tea.Cmd {
@@ -72,10 +74,22 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
+				m.numRecorded++
 				m.choice = string(i)
 			}
-			return m, tea.Quit
+			return m, nil
+
+		case "n":
+			textInputModel := NewTextInputModel(m)
+			// send nil message because other wise it sends "n"
+			// And the text field starts with this letter already in there
+			return textInputModel.Update(nil)
+
 		}
+
+	case userSavedMsg:
+		m.newEntry = msg.text
+		return m, nil
 	}
 
 	var cmd tea.Cmd
@@ -84,39 +98,50 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m ListModel) View() string {
+	var s string
 	if m.choice != "" {
-		return quitTextStyle.Render(fmt.Sprintf("Recorded %s", m.choice))
+		s = quitTextStyle.Render(fmt.Sprintf("Recorded %s", m.choice))
 	}
+
+	if m.newEntry != "" {
+		s = quitTextStyle.Render(fmt.Sprintf("Added %s as a new goal to track.", m.newEntry))
+	}
+
 	if m.quitting {
-		return quitTextStyle.Render("Not hungry? That’s cool.")
+		s = quitTextStyle.Render(fmt.Sprintf("You recorded %d completed goals this session. Goodbye", m.numRecorded))
+		return s
 	}
-	return "\n" + m.list.View()
+
+	return "\n" + s + "\n\n" + m.list.View() + m.helpView()
+
 }
 
-func NewList() *ListModel {
+func (m ListModel) helpView() string {
+	return helpStyle.Render("\n ↑/k: up • /j: down • esc/q/ctrl+c: quit • n: create entry \n")
+}
+
+func NewList() ListModel {
 	items := []list.Item{
-		item("Ramen"),
-		item("Tomato Soup"),
-		item("Hamburgers"),
-		item("Cheeseburgers"),
-		item("Currywurst"),
-		item("Okonomiyaki"),
-		item("Pasta"),
-		item("Fillet Mignon"),
-		item("Caviar"),
-		item("Just Wine"),
+		item("Work out"),
+		item("DS&Alg"),
+		item("Coding"),
+		item("Read the Ministry"),
+		item("Read the Bible"),
+		item("Read current book"),
+		item("Study German"),
 	}
 
-	const defaultWidth = 20
+	const defaultWidth = 200
 
 	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
-	l.Title = "What do you want for dinner?"
+	l.Title = "What goal did you complete today?"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.Styles.Title = titleStyle
 	l.Styles.PaginationStyle = paginationStyle
 	l.Styles.HelpStyle = helpStyle
+	l.SetShowHelp(false)
 
-	m := &ListModel{list: l}
+	m := ListModel{list: l}
 	return m
 }
