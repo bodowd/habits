@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/bodowd/habits/data"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"gorm.io/gorm"
 )
 
 const listHeight = 15
@@ -125,15 +127,15 @@ func (m ListModel) helpView() string {
 	return helpStyle.Render("\n ↑/k: up • /j: down • q/ctrl+c: quit • n: create entry \n")
 }
 
-func NewList() ListModel {
-	items := []list.Item{
-		item("Work out"),
-		item("DS&Alg"),
-		item("Coding"),
-		item("Read the Ministry"),
-		item("Read the Bible"),
-		item("Read current book"),
-		item("Study German"),
+func NewList(db *gorm.DB) ListModel {
+	hdb := data.Database{DB: db}
+
+	habits := hdb.GetActiveHabits()
+
+	items := make([]list.Item, len(habits))
+
+	for i, h := range habits {
+		items[i] = list.Item(item(h.Name))
 	}
 
 	const defaultWidth = 200
