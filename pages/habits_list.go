@@ -75,6 +75,7 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
 				m.numRecorded++
+				m.newEntry = ""
 				m.choice = string(i)
 			}
 			return m, nil
