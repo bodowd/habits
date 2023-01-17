@@ -30,10 +30,7 @@ func TestCreateHabit(t *testing.T) {
 			t.Errorf("got %v want %v", gotName, wantName)
 		}
 
-		_, err := time.Parse("2006-01-02", gotCreatedAt)
-		if err != nil {
-			t.Errorf("got %v, error: %v", gotCreatedAt, err)
-		}
+		assertDate(t, gotCreatedAt)
 
 		if gotActive != true {
 			t.Errorf("got %v want %v", gotActive, true)
@@ -71,8 +68,42 @@ func TestGetAllHabits(t *testing.T) {
 	}
 }
 
-func currentDate() string {
-	return time.Now().Format("2006-01-02")
+func TestRecordCompletion(t *testing.T) {
+	db := setup(t)
+	g := Database{DB: db}
+
+	t.Run("adds to streak if a completion was recorded yesterday", func(t *testing.T) {
+		// id 1 is cook
+		got, _ := g.RecordCompletion(1)
+
+		assertDate(t, got.RecordedAt)
+
+		wantStreak := 4
+		if got.Streak != wantStreak {
+			t.Errorf("got %d want %d", got.Streak, wantStreak)
+		}
+
+		if got.HabitID != 1 {
+			t.Errorf("got id %d want %d", got.HabitID, 1)
+		}
+	})
+
+	t.Run("streak starts over if a record from yesterday was not found", func(t *testing.T) {
+		got, _ := g.RecordCompletion(2)
+
+		assertDate(t, got.RecordedAt)
+
+		wantStreak := 1
+		if got.Streak != wantStreak {
+			t.Errorf("got %d want %d", got.Streak, wantStreak)
+		}
+
+		if got.HabitID != 2 {
+			t.Errorf("got id %d want %d", got.HabitID, 2)
+		}
+
+	})
+
 }
 
 func setup(t *testing.T) *gorm.DB {
@@ -83,11 +114,11 @@ func setup(t *testing.T) *gorm.DB {
 		log.Fatalf("unable to open in-memory SQLite DB: %v", err)
 	}
 
-	db.AutoMigrate(&Habit{})
+	db.AutoMigrate(&Habit{}, &Completion{})
 
 	seedHabits(db)
 	t.Cleanup(func() {
-		db.Migrator().DropTable(&Habit{})
+		db.Migrator().DropTable(&Habit{}, &Completion{})
 	})
 	return db
 }
@@ -99,8 +130,28 @@ func seedHabits(db *gorm.DB) {
 		{Name: "read", CreatedAt: currentDate(), Active: true},
 		{Name: "clean", CreatedAt: currentDate(), Active: false},
 	}
+
+	records := []Completion{
+		{RecordedAt: yesterdaysDate(), Streak: 3, HabitID: 1},
+		{RecordedAt: time.Now().AddDate(0, 0, -2).Format("2006-01-02"),
+			Streak:  3,
+			HabitID: 2},
+	}
 	for _, i := range habits {
 		db.Create(&i)
+	}
+
+	for _, i := range records {
+		db.Create(&i)
+	}
+
+}
+
+func assertDate(t *testing.T, got string) {
+	t.Helper()
+	_, err := time.Parse("2006-01-02", got)
+	if err != nil {
+		t.Errorf("got %v, error: %v", got, err)
 	}
 
 }
