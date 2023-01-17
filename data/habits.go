@@ -50,6 +50,22 @@ func (d *Database) CreateHabit(name string) (Habit, error) {
 	return hab, nil
 }
 
+type HabitAndStreak struct {
+	Habit
+	Completion
+}
+
+func (d *Database) GetActiveHabitsAndCompletions() []HabitAndStreak {
+	var habitsAndStreak []HabitAndStreak
+
+	d.DB.Table("habits").
+		Select("habits.*, completions.*").
+		Joins("INNER JOIN completions ON completions.habit_id=habits.id").
+		Where("habits.active = ?", true).Find(&habitsAndStreak)
+
+	return habitsAndStreak
+}
+
 func (d *Database) GetActiveHabits() []Habit {
 	var habits []Habit
 	d.DB.Where("active = ?", true).Find(&habits)
