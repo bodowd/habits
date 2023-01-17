@@ -2,6 +2,7 @@ package data
 
 import (
 	"log"
+	"strings"
 	"testing"
 	"time"
 
@@ -52,8 +53,9 @@ func TestGetActiveHabits(t *testing.T) {
 
 	habits := g.GetActiveHabits()
 
-	if len(habits) != 2 {
-		t.Errorf("got slice of length %d, want 2 elements", len(habits))
+	want := 3
+	if len(habits) != want {
+		t.Errorf("got slice of length %d, want %d elements", len(habits), want)
 	}
 
 }
@@ -63,8 +65,9 @@ func TestGetAllHabits(t *testing.T) {
 	g := Database{DB: db}
 
 	habits := g.GetAllHabits()
-	if len(habits) != 3 {
-		t.Errorf("got slice of length %d, want 3 elements", len(habits))
+	want := 4
+	if len(habits) != want {
+		t.Errorf("got slice of length %d, want %d elements", len(habits), want)
 	}
 }
 
@@ -74,7 +77,7 @@ func TestRecordCompletion(t *testing.T) {
 
 	t.Run("adds to streak if a completion was recorded yesterday", func(t *testing.T) {
 		// id 1 is cook
-		got, _ := g.RecordCompletion(1)
+		got, _ := g.RecordCompletion("cook")
 
 		assertDate(t, got.RecordedAt)
 
@@ -89,7 +92,7 @@ func TestRecordCompletion(t *testing.T) {
 	})
 
 	t.Run("streak starts over if a record from yesterday was not found", func(t *testing.T) {
-		got, _ := g.RecordCompletion(2)
+		got, _ := g.RecordCompletion("read")
 
 		assertDate(t, got.RecordedAt)
 
@@ -100,6 +103,15 @@ func TestRecordCompletion(t *testing.T) {
 
 		if got.HabitID != 2 {
 			t.Errorf("got id %d want %d", got.HabitID, 2)
+		}
+	})
+
+	t.Run("does not record completion for inactive habits", func(t *testing.T) {
+		_, err := g.RecordCompletion("clean")
+		if err != nil {
+			if !strings.Contains("record not found", err.Error()) {
+				t.Errorf("Expected record not found error")
+			}
 		}
 
 	})
@@ -129,6 +141,7 @@ func seedHabits(db *gorm.DB) {
 		{Name: "cook", CreatedAt: currentDate(), Active: true},
 		{Name: "read", CreatedAt: currentDate(), Active: true},
 		{Name: "clean", CreatedAt: currentDate(), Active: false},
+		{Name: "garden", CreatedAt: currentDate(), Active: true},
 	}
 
 	records := []Completion{
@@ -136,6 +149,7 @@ func seedHabits(db *gorm.DB) {
 		{RecordedAt: time.Now().AddDate(0, 0, -2).Format("2006-01-02"),
 			Streak:  3,
 			HabitID: 2},
+		{RecordedAt: yesterdaysDate(), Streak: 510, HabitID: 4},
 	}
 	for _, i := range habits {
 		db.Create(&i)

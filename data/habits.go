@@ -2,6 +2,7 @@ package data
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -62,23 +63,48 @@ func (d *Database) GetAllHabits() []Habit {
 	return habits
 }
 
-func (d *Database) RecordCompletion(habitId uint) (Completion, error) {
+func (d *Database) RecordCompletion(habit string) (Completion, error) {
 	// Check if the last record for this habitId was the day before
-	var lastCompletion Completion
+	type Result struct {
+		Name   string
+		ID     uint
+		Streak int
+	}
+	var result Result
 	var streak int
-	err := d.DB.Where("habit_id = ? AND recorded_at = ?",
-		habitId, yesterdaysDate()).First(&lastCompletion).Error
-
-	// if a recorded completion from yesterday is not found, streak starts over
+	err := d.DB.Table("habits").
+		Select("habits.name, habits.id, completions.streak").
+		Joins("inner join completions on completions.habit_id = habits.id").
+		Where("habits.name = ? AND completions.recorded_at = ? AND habits.active = true",
+			habit, yesterdaysDate()).Find(&result).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			streak = 1
-		}
-	} else {
-		streak = lastCompletion.Streak + 1
+		fmt.Println(err)
 	}
 
-	completion := Completion{RecordedAt: currentDate(), HabitID: habitId, Streak: streak}
+	// if a recorded completion from yesterday is not found, streak starts over
+	if result.Name == "" {
+		streak = 1
+
+		// find the habit id
+		var h Habit
+		err := d.DB.Table("habits").Where("name = ? AND active=true", habit, yesterdaysDate()).First(&h).Error
+
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return Completion{}, err
+			}
+		}
+		result.ID = h.ID
+
+	} else {
+		streak = result.Streak + 1
+	}
+
+	completion := Completion{
+		RecordedAt: currentDate(),
+		HabitID:    result.ID,
+		Streak:     streak,
+	}
 	err = d.DB.Create(&completion).Error
 	return completion, err
 }
