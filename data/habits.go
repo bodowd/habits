@@ -63,6 +63,14 @@ func (d *Database) GetAllHabits() []Habit {
 	return habits
 }
 
+func (d *Database) getHabitByName(habit string) (Habit, error) {
+	var h Habit
+	if err := d.DB.Where("name = ?", habit).First(&h).Error; err != nil {
+		return h, err
+	}
+	return h, nil
+}
+
 func (d *Database) RecordCompletion(habit string) (Completion, error) {
 	// Check if the last record for this habitId was the day before
 	type Result struct {

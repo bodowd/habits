@@ -53,7 +53,7 @@ func TestGetActiveHabits(t *testing.T) {
 
 	habits := g.GetActiveHabits()
 
-	want := 3
+	want := 4
 	if len(habits) != want {
 		t.Errorf("got slice of length %d, want %d elements", len(habits), want)
 	}
@@ -65,7 +65,7 @@ func TestGetAllHabits(t *testing.T) {
 	g := Database{DB: db}
 
 	habits := g.GetAllHabits()
-	want := 4
+	want := 5
 	if len(habits) != want {
 		t.Errorf("got slice of length %d, want %d elements", len(habits), want)
 	}
@@ -108,14 +108,33 @@ func TestRecordCompletion(t *testing.T) {
 
 	t.Run("does not record completion for inactive habits", func(t *testing.T) {
 		_, err := g.RecordCompletion("clean")
-		if err != nil {
-			if !strings.Contains("record not found", err.Error()) {
-				t.Errorf("Expected record not found error")
-			}
+		assertRecordNotFound(t, err)
+	})
+
+	t.Run("only records one completion per day", func(t *testing.T) {
+		g.RecordCompletion("play guitar")
+	})
+
+}
+
+func TestGetHabitByName(t *testing.T) {
+	db := setup(t)
+	g := Database{DB: db}
+
+	t.Run("gets habit by name", func(t *testing.T) {
+		want := "cook"
+		h, _ := g.getHabitByName(want)
+
+		if h.Name != want {
+			t.Errorf("got %v name want %v", h.Name, want)
 		}
 
 	})
 
+	t.Run("returns record not found if cannot find habit", func(t *testing.T) {
+		_, err := g.getHabitByName("NOT EXISTING")
+		assertRecordNotFound(t, err)
+	})
 }
 
 func setup(t *testing.T) *gorm.DB {
@@ -142,6 +161,7 @@ func seedHabits(db *gorm.DB) {
 		{Name: "read", CreatedAt: currentDate(), Active: true},
 		{Name: "clean", CreatedAt: currentDate(), Active: false},
 		{Name: "garden", CreatedAt: currentDate(), Active: true},
+		{Name: "play guitar", CreatedAt: currentDate(), Active: true},
 	}
 
 	records := []Completion{
@@ -150,6 +170,7 @@ func seedHabits(db *gorm.DB) {
 			Streak:  3,
 			HabitID: 2},
 		{RecordedAt: yesterdaysDate(), Streak: 510, HabitID: 4},
+		{RecordedAt: currentDate(), Streak: 1, HabitID: 5},
 	}
 	for _, i := range habits {
 		db.Create(&i)
@@ -166,6 +187,14 @@ func assertDate(t *testing.T, got string) {
 	_, err := time.Parse("2006-01-02", got)
 	if err != nil {
 		t.Errorf("got %v, error: %v", got, err)
+	}
+
+}
+
+func assertRecordNotFound(t *testing.T, err error) {
+	t.Helper()
+	if !strings.Contains("record not found", err.Error()) {
+		t.Errorf("Expected record not found error")
 	}
 
 }
