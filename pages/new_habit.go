@@ -61,7 +61,7 @@ func (m TextInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.listModel.Update(msg)
 		case tea.KeyEnter:
 			m.text = m.textInput.Value()
-			_, err := m.listModel.hdb.CreateHabit(m.text)
+			_, err := m.listModel.db.CreateHabit(m.text)
 			if err != nil {
 				m.text = ""
 				if strings.Contains(err.Error(), "UNIQUE") {

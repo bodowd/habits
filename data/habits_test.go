@@ -112,7 +112,10 @@ func TestRecordCompletion(t *testing.T) {
 	})
 
 	t.Run("only records one completion per day", func(t *testing.T) {
-		g.RecordCompletion("play guitar")
+		_, err := g.RecordCompletion("play guitar")
+		if err == nil {
+			t.Errorf("Expected already recorded error. Got %v", err.Error())
+		}
 	})
 
 }

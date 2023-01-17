@@ -2,7 +2,7 @@ package data
 
 import (
 	"errors"
-	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -71,39 +71,59 @@ func (d *Database) getHabitByName(habit string) (Habit, error) {
 	return h, nil
 }
 
-func (d *Database) RecordCompletion(habit string) (Completion, error) {
+type Result struct {
+	Name   string
+	ID     uint
+	Streak int
+}
+
+func (d *Database) getCompletionAtTime(habit, day string) (Result, error) {
 	// Check if the last record for this habitId was the day before
-	type Result struct {
-		Name   string
-		ID     uint
-		Streak int
-	}
 	var result Result
-	var streak int
 	err := d.DB.Table("habits").
 		Select("habits.name, habits.id, completions.streak").
 		Joins("inner join completions on completions.habit_id = habits.id").
 		Where("habits.name = ? AND completions.recorded_at = ? AND habits.active = true",
-			habit, yesterdaysDate()).Find(&result).Error
+			habit, day).First(&result).Error
 	if err != nil {
-		fmt.Println(err)
+		return result, err
+	}
+	return result, nil
+}
+
+type AlreadyRecordedTodayError struct{}
+
+func (e *AlreadyRecordedTodayError) Error() string {
+	return "Already recorded completion for today"
+}
+
+func (d *Database) RecordCompletion(habit string) (Completion, error) {
+	// don't allow more completions if completion already recorded today
+	_, err := d.getCompletionAtTime(habit, currentDate())
+	if err == nil {
+		return Completion{}, &AlreadyRecordedTodayError{}
 	}
 
+	var streak int
+
 	// if a recorded completion from yesterday is not found, streak starts over
-	if result.Name == "" {
-		streak = 1
+	result, err := d.getCompletionAtTime(habit, yesterdaysDate())
+	if err != nil {
+		// if the record is not found, streak starts over
+		if strings.Contains("record not found", err.Error()) {
+			streak = 1
 
-		// find the habit id
-		var h Habit
-		err := d.DB.Table("habits").Where("name = ? AND active=true", habit, yesterdaysDate()).First(&h).Error
+			// find the habit id
+			var h Habit
+			err := d.DB.Table("habits").Where("name = ? AND active=true", habit, yesterdaysDate()).First(&h).Error
 
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return Completion{}, err
+			if err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return Completion{}, err
+				}
 			}
+			result.ID = h.ID
 		}
-		result.ID = h.ID
-
 	} else {
 		streak = result.Streak + 1
 	}
