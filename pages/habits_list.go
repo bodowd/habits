@@ -65,6 +65,7 @@ type StatusMessageFlags struct {
 	alreadyRecorded bool
 	newRecord       bool
 	archived        bool
+	restoredHabit   string
 }
 
 func (m ListModel) Init() tea.Cmd {
@@ -144,6 +145,14 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.StatusMessageFlags.archived = true
 			m = m.updateHabitsList()
 			return m, nil
+
+		case "r":
+			fmt.Println("HI")
+			m.StatusMessageFlags = StatusMessageFlags{}
+			// go to restore habits page
+			// restoreHabitsModel.Update(nil)
+			archivedHabitsModel := NewArchivedHabitsModel(m)
+			return archivedHabitsModel.Update(nil)
 		}
 
 	case userSavedMsg:
@@ -153,6 +162,11 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.updateHabitsList()
 		return m, nil
 
+	case restoredHabitMsg:
+		m.StatusMessageFlags = StatusMessageFlags{}
+		m.StatusMessageFlags.restoredHabit = msg.choice
+		m = m.updateHabitsList()
+		return m, nil
 	}
 
 	var cmd tea.Cmd
@@ -180,6 +194,12 @@ func (m ListModel) View() string {
 			fmt.Sprintf(
 				"Archived %s",
 				m.choice))
+	}
+
+	if m.StatusMessageFlags.restoredHabit != "" {
+		s = notificationTextStyle.Render(fmt.Sprintf(
+			"Restored %s", m.StatusMessageFlags.restoredHabit,
+		))
 	}
 
 	if m.StatusMessageFlags.quitting {
