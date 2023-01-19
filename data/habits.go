@@ -152,3 +152,11 @@ func (d *Database) RecordCompletion(habit string) (Completion, error) {
 	err = d.DB.Create(&completion).Error
 	return completion, err
 }
+
+func (d *Database) ArchiveHabit(habit string) error {
+	err := d.DB.Model(&Habit{}).Where("name = ? AND active = true", habit).Update("active", "false").Error
+	if err != nil {
+		return err
+	}
+	return nil
+}

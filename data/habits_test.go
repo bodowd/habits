@@ -140,6 +140,36 @@ func TestGetHabitByName(t *testing.T) {
 	})
 }
 
+func TestArchiveHabit(t *testing.T) {
+	db := setup(t)
+	g := Database{DB: db}
+
+	t.Run("archives an active habit", func(t *testing.T) {
+		err := g.ArchiveHabit("cook")
+		if err != nil {
+			t.Errorf("did not expect error")
+		}
+
+		habit, err := g.getHabitByName("cook")
+		if err != nil {
+			t.Errorf("did not expect error")
+		}
+
+		if habit.Active {
+			t.Errorf("got %v expected false", habit.Active)
+		}
+	})
+
+	t.Run("cannot archive an inactive habit", func(t *testing.T) {
+		g.ArchiveHabit("clean")
+		habit, _ := g.getHabitByName("clean")
+
+		if habit.Active {
+			t.Errorf("got %v expected false", habit.Active)
+		}
+	})
+}
+
 func setup(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"),
