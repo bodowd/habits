@@ -146,14 +146,10 @@ func TestArchiveHabit(t *testing.T) {
 
 	t.Run("archives an active habit", func(t *testing.T) {
 		err := g.ArchiveHabit("cook")
-		if err != nil {
-			t.Errorf("did not expect error")
-		}
+		didNotExpectError(t, err)
 
 		habit, err := g.getHabitByName("cook")
-		if err != nil {
-			t.Errorf("did not expect error")
-		}
+		didNotExpectError(t, err)
 
 		if habit.Active {
 			t.Errorf("got %v expected false", habit.Active)
@@ -168,6 +164,26 @@ func TestArchiveHabit(t *testing.T) {
 			t.Errorf("got %v expected false", habit.Active)
 		}
 	})
+}
+
+func TestRestoreHabit(t *testing.T) {
+	db := setup(t)
+	g := Database{DB: db}
+
+	t.Run("restores an inactive habit", func(t *testing.T) {
+		err := g.RestoreHabit("clean")
+		didNotExpectError(t, err)
+	})
+
+	t.Run("does not do anything to an active habit", func(t *testing.T) {
+		g.RestoreHabit("cook")
+		habit, _ := g.getHabitByName("cook")
+		if !habit.Active {
+			t.Errorf("got %v expected true", habit.Active)
+		}
+
+	})
+
 }
 
 func setup(t *testing.T) *gorm.DB {
@@ -228,6 +244,14 @@ func assertRecordNotFound(t *testing.T, err error) {
 	t.Helper()
 	if !strings.Contains("record not found", err.Error()) {
 		t.Errorf("Expected record not found error")
+	}
+
+}
+
+func didNotExpectError(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Errorf("did not expect error %v", err.Error())
 	}
 
 }
