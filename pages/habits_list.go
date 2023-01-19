@@ -91,6 +91,9 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.StatusMessageFlags.quitting = true
 			return m, tea.Quit
 
+		case "q":
+			return m, nil
+
 		case "enter":
 			// reset message flags
 			m.StatusMessageFlags = StatusMessageFlags{}
