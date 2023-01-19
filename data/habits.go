@@ -66,11 +66,20 @@ func (d *Database) GetActiveHabitsAndCompletions() []HabitAndStreak {
 	return habitsAndStreak
 }
 
-func (d *Database) GetActiveHabits() []Habit {
+func (d *Database) getHabits(activeFlag bool) []Habit {
 	var habits []Habit
-	d.DB.Where("active = ?", true).Find(&habits)
+	d.DB.Where("active = ?", activeFlag).Find(&habits)
 
 	return habits
+
+}
+
+func (d *Database) GetActiveHabits() []Habit {
+	return d.getHabits(true)
+}
+
+func (d *Database) GetInactiveHabits() []Habit {
+	return d.getHabits(false)
 }
 
 func (d *Database) GetAllHabits() []Habit {

@@ -60,6 +60,17 @@ func TestGetActiveHabits(t *testing.T) {
 
 }
 
+func TestGetInactiveHabits(t *testing.T) {
+	db := setup(t)
+	g := Database{DB: db}
+
+	habits := g.GetInactiveHabits()
+	want := 1
+	if len(habits) != want {
+		t.Errorf("got slice of length %d, want %d", len(habits), want)
+	}
+}
+
 func TestGetAllHabits(t *testing.T) {
 	db := setup(t)
 	g := Database{DB: db}
@@ -183,7 +194,6 @@ func TestRestoreHabit(t *testing.T) {
 		}
 
 	})
-
 }
 
 func setup(t *testing.T) *gorm.DB {
