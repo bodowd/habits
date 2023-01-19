@@ -2,9 +2,11 @@ package pages
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"gorm.io/gorm"
 )
 
 type (
@@ -16,6 +18,7 @@ type TextInputModel struct {
 	text      string
 	err       error
 	listModel ListModel
+	db        *gorm.DB
 }
 
 func NewTextInputModel(listModel ListModel) TextInputModel {
@@ -32,9 +35,10 @@ func NewTextInputModel(listModel ListModel) TextInputModel {
 	}
 }
 
-func saveData(text string) tea.Cmd {
-	return nil
+type DuplicateError struct{}
 
+func (e *DuplicateError) Error() string {
+	return "This entry already exists"
 }
 
 type userSavedMsg struct {
@@ -53,17 +57,23 @@ func (m TextInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyCtrlC:
 			return m, tea.Quit
-		case tea.KeyBackspace:
+		case tea.KeyCtrlO:
 			return m.listModel.Update(msg)
 		case tea.KeyEnter:
 			m.text = m.textInput.Value()
-			saveData(m.text)
+			_, err := m.listModel.db.CreateHabit(m.text)
+			if err != nil {
+				m.text = ""
+				if strings.Contains(err.Error(), "UNIQUE") {
+					m.err = &DuplicateError{}
+				}
+				return m, nil
+			}
 			saved := userSavedMsg{
 				text: m.text,
 			}
 			// switch view back to list
 			return m.listModel.Update(saved)
-
 		}
 
 		// handle errors just like any other message
@@ -73,19 +83,25 @@ func (m TextInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	m.textInput, cmd = m.textInput.Update(msg)
+
 	return m, cmd
 }
 
 func (m TextInputModel) View() string {
-	s := "What new goal do you want to track?\n\n"
+	var s string = ""
+	s = "What new goal do you want to track?\n\n"
 	s += fmt.Sprintf(
 		"%s\n\n%s",
 		m.textInput.View(),
-		helpStyle.Render("\n ctrl+c: quit • backspace: back • enter: save entry\n"),
+		helpStyle.Render("\n ctrl+c: quit • ctrl+o: back • enter: save entry\n"),
 	) + "\n"
 
 	if m.text != "" {
 		s += fmt.Sprintf("Saved %s!", m.text)
+	}
+
+	if m.err != nil {
+		s += fmt.Sprintf("Error: %s", m.err.Error())
 	}
 
 	return s

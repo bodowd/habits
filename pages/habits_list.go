@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/bodowd/habits/data"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"gorm.io/gorm"
 )
 
 const listHeight = 15
@@ -48,11 +50,15 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 }
 
 type ListModel struct {
-	list        list.Model
-	choice      string
-	quitting    bool
-	numRecorded int
-	newEntry    string
+	list            list.Model
+	choice          string
+	quitting        bool
+	numRecorded     int
+	newEntry        string
+	db              data.Database
+	errorMessage    string
+	streak          int
+	alreadyRecorded bool
 }
 
 func (m ListModel) Init() tea.Cmd {
@@ -60,6 +66,7 @@ func (m ListModel) Init() tea.Cmd {
 }
 
 func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.list.SetWidth(msg.Width)
@@ -74,13 +81,29 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
-				m.numRecorded++
 				m.newEntry = ""
 				m.choice = string(i)
+
+				completion, err := m.db.RecordCompletion(m.choice)
+				if err != nil {
+					m.alreadyRecorded = true
+					return m, nil
+				}
+				if err == nil {
+					// make sure this flag is set to false so that
+					// the View messages can be rendered and not overwritten
+					m.alreadyRecorded = false
+					m.numRecorded++
+				}
+
+				m.streak = completion.Streak
 			}
 			return m, nil
 
 		case "n":
+			// make sure this flag is set to false so that
+			// the View messages can be rendered and not overwritten
+			m.alreadyRecorded = false
 			textInputModel := NewTextInputModel(m)
 			// send nil message because other wise it sends "n"
 			// And the text field starts with this letter already in there
@@ -94,22 +117,31 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case userSavedMsg:
 		m.newEntry = msg.text
+		habits := m.db.GetActiveHabits()
+		habitItems := itemsToList(habits)
+		m.list.SetItems(habitItems)
 		return m, nil
+
 	}
 
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
-	return m, cmd
+	cmds = append(cmds, cmd)
+	return m, tea.Batch(cmds...)
 }
 
 func (m ListModel) View() string {
 	var s string
 	if m.choice != "" {
-		s = notificationTextStyle.Render(fmt.Sprintf("Recorded %s", m.choice))
+		s = notificationTextStyle.Render(fmt.Sprintf("Recorded %s. Current streak: %d", m.choice, m.streak))
 	}
 
 	if m.newEntry != "" {
 		s = notificationTextStyle.Render(fmt.Sprintf("Added %s as a new goal to track.", m.newEntry))
+	}
+
+	if m.alreadyRecorded {
+		s = notificationTextStyle.Render(fmt.Sprintf("Completion for goal '%s' already recorded for today.", m.choice))
 	}
 
 	if m.quitting {
@@ -125,16 +157,21 @@ func (m ListModel) helpView() string {
 	return helpStyle.Render("\n ↑/k: up • /j: down • q/ctrl+c: quit • n: create entry \n")
 }
 
-func NewList() ListModel {
-	items := []list.Item{
-		item("Work out"),
-		item("DS&Alg"),
-		item("Coding"),
-		item("Read the Ministry"),
-		item("Read the Bible"),
-		item("Read current book"),
-		item("Study German"),
+func itemsToList(habits []data.Habit) []list.Item {
+	items := make([]list.Item, len(habits))
+
+	for i, h := range habits {
+		items[i] = list.Item(item(h.Name))
 	}
+	return items
+}
+
+func NewList(db *gorm.DB) ListModel {
+	hdb := data.Database{DB: db}
+
+	habits := hdb.GetActiveHabits()
+
+	items := itemsToList(habits)
 
 	const defaultWidth = 200
 
@@ -147,6 +184,6 @@ func NewList() ListModel {
 	l.Styles.HelpStyle = helpStyle
 	l.SetShowHelp(false)
 
-	m := ListModel{list: l}
+	m := ListModel{list: l, db: hdb}
 	return m
 }
