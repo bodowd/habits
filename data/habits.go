@@ -165,7 +165,7 @@ func (d *Database) RecordCompletion(habit string) (Completion, error) {
 func (d *Database) ArchiveHabit(habit string) error {
 	err := d.DB.Model(&Habit{}).
 		Where("name = ? AND active = true", habit).
-		Update("active", "false").Error
+		Update("active", false).Error
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func (d *Database) ArchiveHabit(habit string) error {
 func (d *Database) RestoreHabit(habit string) error {
 	err := d.DB.Model(&Habit{}).
 		Where("name = ? AND active = false", habit).
-		Update("active", "true").Error
+		Update("active", true).Error
 	if err != nil {
 		return err
 	}
