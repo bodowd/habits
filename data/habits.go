@@ -2,6 +2,7 @@ package data
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -50,18 +51,30 @@ func (d *Database) CreateHabit(name string) (Habit, error) {
 	return hab, nil
 }
 
-type HabitAndStreak struct {
+type HabitAndCompletion struct {
 	Habit
 	Completion
 }
 
-func (d *Database) GetActiveHabitsAndCompletions() []HabitAndStreak {
-	var habitsAndStreak []HabitAndStreak
+func (d *Database) GetActiveHabitsAndCompletions(month, year int) []HabitAndCompletion {
+	var habitsAndStreak []HabitAndCompletion
+
+	firstDayOfMonth, err := time.Parse("2006-01-02", fmt.Sprintf("%d-%02d-01", year, month))
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	lastDayOfMonth, err := time.Parse("2006-01-02", fmt.Sprintf("%d-%02d-31", year, month))
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	d.DB.Table("habits").
 		Select("habits.*, completions.*").
 		Joins("INNER JOIN completions ON completions.habit_id=habits.id").
-		Where("habits.active = ?", true).Find(&habitsAndStreak)
+		Where("habits.active = ? AND completions.recorded_at BETWEEN ? AND ?",
+			true, firstDayOfMonth, lastDayOfMonth).
+		Find(&habitsAndStreak)
 
 	return habitsAndStreak
 }

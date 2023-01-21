@@ -196,6 +196,43 @@ func TestRestoreHabit(t *testing.T) {
 	})
 }
 
+func TestGetActiveHabitsAndCompletions(t *testing.T) {
+	db := setup(t)
+	g := Database{DB: db}
+
+	t.Run("gets all active habits and their completions", func(t *testing.T) {
+		type Result struct {
+			name       string
+			recordedAt string
+		}
+
+		year, month, _ := time.Now().Date()
+
+		habitsAndCompletions := g.GetActiveHabitsAndCompletions(int(month), year)
+
+		result := []Result{}
+		resultMap := map[string]bool{}
+		for _, h := range habitsAndCompletions {
+			_, ok := resultMap[h.Name]
+			if !ok {
+				resultMap[h.Name] = true
+			}
+			if h.Habit.Name == "read" {
+				result = append(result, Result{name: h.Name, recordedAt: h.Completion.RecordedAt})
+			}
+		}
+
+		if len(result) != 3 {
+			t.Errorf("expected 3 recordings for read, got %d", len(result))
+		}
+
+		if len(resultMap) != 4 {
+			t.Errorf("expected 4 habits, got %d", len(resultMap))
+		}
+
+	})
+}
+
 func setup(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"),
@@ -226,7 +263,13 @@ func seedHabits(db *gorm.DB) {
 	records := []Completion{
 		{RecordedAt: yesterdaysDate(), Streak: 3, HabitID: 1},
 		{RecordedAt: time.Now().AddDate(0, 0, -2).Format("2006-01-02"),
+			Streak:  4,
+			HabitID: 2},
+		{RecordedAt: time.Now().AddDate(0, 0, -3).Format("2006-01-02"),
 			Streak:  3,
+			HabitID: 2},
+		{RecordedAt: time.Now().AddDate(0, 0, -4).Format("2006-01-02"),
+			Streak:  2,
 			HabitID: 2},
 		{RecordedAt: yesterdaysDate(), Streak: 510, HabitID: 4},
 		{RecordedAt: currentDate(), Streak: 1, HabitID: 5},
