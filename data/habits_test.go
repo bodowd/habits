@@ -233,6 +233,16 @@ func TestGetActiveHabitsAndCompletions(t *testing.T) {
 	})
 }
 
+func TestGetAvailableYears(t *testing.T) {
+	db := setup(t)
+	g := Database{DB: db}
+
+	years := g.GetAvailableYears()
+	if len(years) != 3 {
+		t.Errorf("expected 3 distinct years, got %d", len(years))
+	}
+}
+
 func setup(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"),
@@ -273,6 +283,8 @@ func seedHabits(db *gorm.DB) {
 			HabitID: 2},
 		{RecordedAt: yesterdaysDate(), Streak: 510, HabitID: 4},
 		{RecordedAt: currentDate(), Streak: 1, HabitID: 5},
+		{RecordedAt: time.Now().AddDate(-2, 0, 0).Format("2006-01-02"), Streak: 20, HabitID: 5},
+		{RecordedAt: time.Now().AddDate(-10, 0, 0).Format("2006-01-02"), Streak: 20, HabitID: 5},
 	}
 	for _, i := range habits {
 		db.Create(&i)

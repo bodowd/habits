@@ -79,6 +79,13 @@ func (d *Database) GetActiveHabitsAndCompletions(month, year int) []HabitAndComp
 	return habitsAndStreak
 }
 
+func (d *Database) GetAvailableYears() []string {
+	var years []string
+	d.DB.Raw("SELECT DISTINCT STRFTIME('%Y', recorded_at) FROM completions").Scan(&years)
+	fmt.Println(years)
+	return years
+}
+
 func (d *Database) getHabits(activeFlag bool) []Habit {
 	var habits []Habit
 	d.DB.Where("active = ?", activeFlag).Find(&habits)
