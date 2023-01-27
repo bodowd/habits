@@ -153,6 +153,11 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// restoreHabitsModel.Update(nil)
 			archivedHabitsModel := NewArchivedHabitsModel(m)
 			return archivedHabitsModel.Update(nil)
+
+		case "o":
+			// go to overview table page
+			selectYearModel := NewSelectYearModel(m)
+			return selectYearModel.Update(nil)
 		}
 
 	case userSavedMsg:
@@ -212,7 +217,7 @@ func (m ListModel) View() string {
 }
 
 func (m ListModel) helpView() string {
-	return helpStyle.Render("\n ↑/k: up • ↓/j: down • ctrl+c: quit • a: archive • n: create entry \n")
+	return helpStyle.Render("\n ↑/k: up • ↓/j: down • ctrl+c: quit • a: archive • n: create entry • o: overview \n")
 }
 
 func itemsToList(habits []data.Habit) []list.Item {
