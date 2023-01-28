@@ -1,6 +1,7 @@
 package data
 
 import (
+	"fmt"
 	"log"
 	"strings"
 	"testing"
@@ -58,6 +59,17 @@ func TestGetActiveHabits(t *testing.T) {
 		t.Errorf("got slice of length %d, want %d elements", len(habits), want)
 	}
 
+}
+
+func TestGetInactiveHabits(t *testing.T) {
+	db := setup(t)
+	g := Database{DB: db}
+
+	habits := g.GetInactiveHabits()
+	want := 1
+	if len(habits) != want {
+		t.Errorf("got slice of length %d, want %d", len(habits), want)
+	}
 }
 
 func TestGetAllHabits(t *testing.T) {
@@ -140,6 +152,109 @@ func TestGetHabitByName(t *testing.T) {
 	})
 }
 
+func TestArchiveHabit(t *testing.T) {
+	db := setup(t)
+	g := Database{DB: db}
+
+	t.Run("archives an active habit", func(t *testing.T) {
+		err := g.ArchiveHabit("cook")
+		didNotExpectError(t, err)
+
+		habit, err := g.getHabitByName("cook")
+		didNotExpectError(t, err)
+
+		if habit.Active {
+			t.Errorf("got %v expected false", habit.Active)
+		}
+	})
+
+	t.Run("cannot archive an inactive habit", func(t *testing.T) {
+		g.ArchiveHabit("clean")
+		habit, _ := g.getHabitByName("clean")
+
+		if habit.Active {
+			t.Errorf("got %v expected false", habit.Active)
+		}
+	})
+}
+
+func TestRestoreHabit(t *testing.T) {
+	db := setup(t)
+	g := Database{DB: db}
+
+	t.Run("restores an inactive habit", func(t *testing.T) {
+		err := g.RestoreHabit("clean")
+		didNotExpectError(t, err)
+	})
+
+	t.Run("does not do anything to an active habit", func(t *testing.T) {
+		g.RestoreHabit("cook")
+		habit, _ := g.getHabitByName("cook")
+		if !habit.Active {
+			t.Errorf("got %v expected true", habit.Active)
+		}
+
+	})
+}
+
+func TestGetActiveHabitsAndCompletions(t *testing.T) {
+	db := setup(t)
+	g := Database{DB: db}
+
+	t.Run("gets active habits and their completions", func(t *testing.T) {
+		type Result struct {
+			name       string
+			recordedAt string
+		}
+
+		year, month, _ := time.Now().Date()
+
+		habitsAndCompletions := g.GetActiveHabitsAndCompletions(int(month), year)
+		fmt.Println(habitsAndCompletions)
+
+		result := []Result{}
+		resultMap := map[string]bool{}
+		for _, h := range habitsAndCompletions {
+			_, ok := resultMap[h.Name]
+			if !ok {
+				resultMap[h.Name] = true
+			}
+			if h.Habit.Name == "read" {
+				result = append(result, Result{name: h.Name, recordedAt: h.Completion.RecordedAt})
+			}
+		}
+
+		if len(result) != 3 {
+			t.Errorf("expected 3 recordings for read, got %d", len(result))
+		}
+
+		if len(resultMap) != 4 {
+			t.Errorf("expected 4 habits, got %d", len(resultMap))
+		}
+
+	})
+
+	t.Run("returns empty slice if nothing there", func(t *testing.T) {
+		month := time.Now().AddDate(0, 1, 0).Month().String()[0:3]
+		year := time.Now().AddDate(1, 0, 0).Year()
+
+		h := g.GetActiveHabitsAndCompletions(MonthToIntMap[month], year)
+		if len(h) != 0 {
+			t.Errorf("expected slice of length 0 but got %v", h)
+		}
+	})
+}
+
+func TestGetAvailableYears(t *testing.T) {
+	db := setup(t)
+	g := Database{DB: db}
+
+	years := g.GetAvailableYears()
+	if len(years) != 3 {
+		t.Errorf("expected 3 distinct years, got %d", len(years))
+	}
+}
+
 func setup(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"),
@@ -170,10 +285,18 @@ func seedHabits(db *gorm.DB) {
 	records := []Completion{
 		{RecordedAt: yesterdaysDate(), Streak: 3, HabitID: 1},
 		{RecordedAt: time.Now().AddDate(0, 0, -2).Format("2006-01-02"),
+			Streak:  4,
+			HabitID: 2},
+		{RecordedAt: time.Now().AddDate(0, 0, -3).Format("2006-01-02"),
 			Streak:  3,
+			HabitID: 2},
+		{RecordedAt: time.Now().AddDate(0, 0, -4).Format("2006-01-02"),
+			Streak:  2,
 			HabitID: 2},
 		{RecordedAt: yesterdaysDate(), Streak: 510, HabitID: 4},
 		{RecordedAt: currentDate(), Streak: 1, HabitID: 5},
+		{RecordedAt: time.Now().AddDate(-2, 0, 0).Format("2006-01-02"), Streak: 20, HabitID: 5},
+		{RecordedAt: time.Now().AddDate(-10, 0, 0).Format("2006-01-02"), Streak: 20, HabitID: 5},
 	}
 	for _, i := range habits {
 		db.Create(&i)
@@ -198,6 +321,14 @@ func assertRecordNotFound(t *testing.T, err error) {
 	t.Helper()
 	if !strings.Contains("record not found", err.Error()) {
 		t.Errorf("Expected record not found error")
+	}
+
+}
+
+func didNotExpectError(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Errorf("did not expect error %v", err.Error())
 	}
 
 }

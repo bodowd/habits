@@ -2,11 +2,27 @@ package data
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"gorm.io/gorm"
 )
+
+var MonthToIntMap = map[string]int{
+	"Jan": 1,
+	"Feb": 2,
+	"Mar": 3,
+	"Apr": 4,
+	"May": 5,
+	"Jun": 6,
+	"Jul": 7,
+	"Aug": 8,
+	"Sep": 9,
+	"Oct": 10,
+	"Nov": 11,
+	"Dec": 12,
+}
 
 type Habit struct {
 	gorm.Model
@@ -50,27 +66,63 @@ func (d *Database) CreateHabit(name string) (Habit, error) {
 	return hab, nil
 }
 
-type HabitAndStreak struct {
+type HabitAndCompletion struct {
 	Habit
 	Completion
 }
 
-func (d *Database) GetActiveHabitsAndCompletions() []HabitAndStreak {
-	var habitsAndStreak []HabitAndStreak
+func (d *Database) GetActiveHabitsAndCompletions(month, year int) []HabitAndCompletion {
+	var habitsAndStreak []HabitAndCompletion
+
+	firstDayOfMonth, err := time.Parse("2006-01-02", fmt.Sprintf("%d-%02d-01", year, month))
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	lastDayOfMonth, err := time.Parse("2006-01-02", fmt.Sprintf("%d-%02d-31", year, month))
+	if err != nil {
+		// if the date is out of range, like 31st day of month that doesn't have the 31st date
+		lastDayOfMonth, err = time.Parse("2006-01-02", fmt.Sprintf("%d-%02d-30", year, month))
+		if err != nil {
+			// if there is no 30th day, like Feb
+			lastDayOfMonth, err = time.Parse("2006-01-02", fmt.Sprintf("%d-%02d-29", year, month))
+			if err != nil {
+				// if it's not a leap year
+				lastDayOfMonth, err = time.Parse("2006-01-02", fmt.Sprintf("%d-%02d-29", year, month))
+			}
+		}
+	}
 
 	d.DB.Table("habits").
 		Select("habits.*, completions.*").
 		Joins("INNER JOIN completions ON completions.habit_id=habits.id").
-		Where("habits.active = ?", true).Find(&habitsAndStreak)
+		Where("habits.active = ? AND completions.recorded_at BETWEEN ? AND ?",
+			true, firstDayOfMonth, lastDayOfMonth).
+		Find(&habitsAndStreak)
 
 	return habitsAndStreak
 }
 
-func (d *Database) GetActiveHabits() []Habit {
+func (d *Database) GetAvailableYears() []string {
+	var years []string
+	d.DB.Raw("SELECT DISTINCT STRFTIME('%Y', recorded_at) FROM completions").Scan(&years)
+	return years
+}
+
+func (d *Database) getHabits(activeFlag bool) []Habit {
 	var habits []Habit
-	d.DB.Where("active = ?", true).Find(&habits)
+	d.DB.Where("active = ?", activeFlag).Find(&habits)
 
 	return habits
+
+}
+
+func (d *Database) GetActiveHabits() []Habit {
+	return d.getHabits(true)
+}
+
+func (d *Database) GetInactiveHabits() []Habit {
+	return d.getHabits(false)
 }
 
 func (d *Database) GetAllHabits() []Habit {
@@ -151,4 +203,25 @@ func (d *Database) RecordCompletion(habit string) (Completion, error) {
 	}
 	err = d.DB.Create(&completion).Error
 	return completion, err
+}
+
+func (d *Database) ArchiveHabit(habit string) error {
+	err := d.DB.Model(&Habit{}).
+		Where("name = ? AND active = true", habit).
+		Update("active", false).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *Database) RestoreHabit(habit string) error {
+	err := d.DB.Model(&Habit{}).
+		Where("name = ? AND active = false", habit).
+		Update("active", true).Error
+	if err != nil {
+		return err
+	}
+	return nil
+
 }
