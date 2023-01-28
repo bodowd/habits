@@ -9,6 +9,21 @@ import (
 	"gorm.io/gorm"
 )
 
+var MonthToIntMap = map[string]int{
+	"Jan": 1,
+	"Feb": 2,
+	"Mar": 3,
+	"Apr": 4,
+	"May": 5,
+	"Jun": 6,
+	"Jul": 7,
+	"Aug": 8,
+	"Sep": 9,
+	"Oct": 10,
+	"Nov": 11,
+	"Dec": 12,
+}
+
 type Habit struct {
 	gorm.Model
 	Name      string `gorm:"unique;not null"`
@@ -66,7 +81,16 @@ func (d *Database) GetActiveHabitsAndCompletions(month, year int) []HabitAndComp
 
 	lastDayOfMonth, err := time.Parse("2006-01-02", fmt.Sprintf("%d-%02d-31", year, month))
 	if err != nil {
-		fmt.Println(err)
+		// if the date is out of range, like 31st day of month that doesn't have the 31st date
+		lastDayOfMonth, err = time.Parse("2006-01-02", fmt.Sprintf("%d-%02d-30", year, month))
+		if err != nil {
+			// if there is no 30th day, like Feb
+			lastDayOfMonth, err = time.Parse("2006-01-02", fmt.Sprintf("%d-%02d-29", year, month))
+			if err != nil {
+				// if it's not a leap year
+				lastDayOfMonth, err = time.Parse("2006-01-02", fmt.Sprintf("%d-%02d-29", year, month))
+			}
+		}
 	}
 
 	d.DB.Table("habits").
@@ -82,7 +106,6 @@ func (d *Database) GetActiveHabitsAndCompletions(month, year int) []HabitAndComp
 func (d *Database) GetAvailableYears() []string {
 	var years []string
 	d.DB.Raw("SELECT DISTINCT STRFTIME('%Y', recorded_at) FROM completions").Scan(&years)
-	fmt.Println(years)
 	return years
 }
 

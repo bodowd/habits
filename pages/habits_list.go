@@ -147,13 +147,11 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "r":
-			fmt.Println("HI")
 			m.StatusMessageFlags = StatusMessageFlags{}
 			// go to restore habits page
 			// restoreHabitsModel.Update(nil)
 			archivedHabitsModel := NewArchivedHabitsModel(m)
 			return archivedHabitsModel.Update(nil)
-
 		case "o":
 			// go to overview table page
 			selectYearModel := NewSelectYearModel(m)

@@ -1,6 +1,7 @@
 package data
 
 import (
+	"fmt"
 	"log"
 	"strings"
 	"testing"
@@ -200,7 +201,7 @@ func TestGetActiveHabitsAndCompletions(t *testing.T) {
 	db := setup(t)
 	g := Database{DB: db}
 
-	t.Run("gets all active habits and their completions", func(t *testing.T) {
+	t.Run("gets active habits and their completions", func(t *testing.T) {
 		type Result struct {
 			name       string
 			recordedAt string
@@ -209,6 +210,7 @@ func TestGetActiveHabitsAndCompletions(t *testing.T) {
 		year, month, _ := time.Now().Date()
 
 		habitsAndCompletions := g.GetActiveHabitsAndCompletions(int(month), year)
+		fmt.Println(habitsAndCompletions)
 
 		result := []Result{}
 		resultMap := map[string]bool{}
@@ -230,6 +232,16 @@ func TestGetActiveHabitsAndCompletions(t *testing.T) {
 			t.Errorf("expected 4 habits, got %d", len(resultMap))
 		}
 
+	})
+
+	t.Run("returns empty slice if nothing there", func(t *testing.T) {
+		month := time.Now().AddDate(0, 1, 0).Month().String()[0:3]
+		year := time.Now().AddDate(1, 0, 0).Year()
+
+		h := g.GetActiveHabitsAndCompletions(MonthToIntMap[month], year)
+		if len(h) != 0 {
+			t.Errorf("expected slice of length 0 but got %v", h)
+		}
 	})
 }
 
