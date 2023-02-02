@@ -88,7 +88,7 @@ func (d *Database) GetActiveHabitsAndCompletions(month, year int) []HabitAndComp
 			lastDayOfMonth, err = time.Parse("2006-01-02", fmt.Sprintf("%d-%02d-29", year, month))
 			if err != nil {
 				// if it's not a leap year
-				lastDayOfMonth, err = time.Parse("2006-01-02", fmt.Sprintf("%d-%02d-29", year, month))
+				lastDayOfMonth, err = time.Parse("2006-01-02", fmt.Sprintf("%d-%02d-28", year, month))
 			}
 		}
 	}
