@@ -1,7 +1,6 @@
 package data
 
 import (
-	"fmt"
 	"log"
 	"strings"
 	"testing"
@@ -210,7 +209,6 @@ func TestGetActiveHabitsAndCompletions(t *testing.T) {
 		year, month, _ := time.Now().Date()
 
 		habitsAndCompletions := g.GetActiveHabitsAndCompletions(int(month), year)
-		fmt.Println(habitsAndCompletions)
 
 		result := []Result{}
 		resultMap := map[string]bool{}
